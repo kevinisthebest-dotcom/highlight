@@ -3,11 +3,16 @@ const app = express();
 
 app.use(express.json());
 
-let online = {}; // userId -> timestamp
-const TIMEOUT = 15000; // 15 seconds
+let online = {};
+const TIMEOUT = 30000;
+
+// health check (IMPORTANT)
+app.get("/", (req, res) => {
+  res.send("OK");
+});
 
 app.post("/ping", (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.body || {};
   if (userId) {
     online[userId] = Date.now();
   }
@@ -24,4 +29,8 @@ app.get("/online", (req, res) => {
   res.json(Object.keys(online).map(Number));
 });
 
-app.listen(process.env.PORT || 3000);
+// 🔑 THIS LINE IS CRITICAL
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
