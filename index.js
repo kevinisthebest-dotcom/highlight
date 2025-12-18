@@ -1,36 +1,70 @@
 const express = require("express");
-const app = express();
+const fs = require("fs");
 
+const app = express();
 app.use(express.json());
 
-let online = {};
-const TIMEOUT = 30000;
+const ADMIN_ID = 1409409437;
+const DATA_FILE = "./data.json";
 
-// health check (IMPORTANT)
-app.get("/", (req, res) => {
-  res.send("OK");
-});
+let data = {
+  tagged: [],
+  kickQueue: []
+};
 
+// Load saved data
+if (fs.existsSync(DATA_FILE)) {
+  data = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+}
+
+// Save helper
+function save() {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data));
+}
+
+// 🔁 PERMANENT TAGGING
 app.post("/ping", (req, res) => {
-  const { userId } = req.body || {};
-  if (userId) {
-    online[userId] = Date.now();
+  const id = Number(req.body.userId);
+  if (!data.tagged.includes(id)) {
+    data.tagged.push(id);
+    save();
   }
-  res.send("ok");
+  res.sendStatus(200);
 });
 
-app.get("/online", (req, res) => {
-  const now = Date.now();
-  for (const id in online) {
-    if (now - online[id] > TIMEOUT) {
-      delete online[id];
-    }
-  }
-  res.json(Object.keys(online).map(Number));
+// 📋 GET ALL TAGGED USERS
+app.get("/tagged", (req, res) => {
+  res.json(data.tagged);
 });
 
-// 🔑 THIS LINE IS CRITICAL
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+// 👢 ADMIN: QUEUE KICK
+app.post("/admin/kick", (req, res) => {
+  const { adminId, targetId } = req.body;
+
+  if (Number(adminId) !== ADMIN_ID) {
+    return res.status(403).send("Forbidden");
+  }
+
+  if (!data.kickQueue.includes(targetId)) {
+    data.kickQueue.push(targetId);
+    save();
+  }
+
+  res.sendStatus(200);
 });
+
+// ❓ CLIENT: CHECK IF I SHOULD BE KICKED
+app.get("/check-kick/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (data.kickQueue.includes(id)) {
+    data.kickQueue = data.kickQueue.filter(x => x !== id);
+    save();
+    return res.json({ kick: true });
+  }
+
+  res.json({ kick: false });
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log("Server running on", PORT));
