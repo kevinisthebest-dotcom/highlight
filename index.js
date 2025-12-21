@@ -9,7 +9,8 @@ const DATA_FILE = "./data.json";
 
 let data = {
   tagged: [],
-  kickQueue: []
+  kickQueue: [],
+  lagQueue: {}
 };
 
 // Load saved data
