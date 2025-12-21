@@ -7,10 +7,11 @@ app.use(express.json());
 const ADMIN_ID = 1409409437;
 const DATA_FILE = "./data.json";
 
+// Corrected data object with commas
 let data = {
   tagged: [],
   kickQueue: [],
-  lagQueue: {}
+  lagQueue: {} // { userId: true/false }
 };
 
 // Load saved data
@@ -41,30 +42,41 @@ app.get("/tagged", (req, res) => {
 // 👢 ADMIN: QUEUE KICK
 app.post("/admin/kick", (req, res) => {
   const { adminId, targetId } = req.body;
-
-  if (Number(adminId) !== ADMIN_ID) {
-    return res.status(403).send("Forbidden");
-  }
+  if (Number(adminId) !== ADMIN_ID) return res.status(403).send("Forbidden");
 
   if (!data.kickQueue.includes(targetId)) {
     data.kickQueue.push(targetId);
     save();
   }
-
   res.sendStatus(200);
 });
 
 // ❓ CLIENT: CHECK IF I SHOULD BE KICKED
 app.get("/check-kick/:id", (req, res) => {
   const id = Number(req.params.id);
-
   if (data.kickQueue.includes(id)) {
     data.kickQueue = data.kickQueue.filter(x => x !== id);
     save();
     return res.json({ kick: true });
   }
-
   res.json({ kick: false });
+});
+
+// 👾 ADMIN: TOGGLE LAG
+app.post("/admin/lag", (req, res) => {
+  const { adminId, targetId, lag } = req.body;
+  if (Number(adminId) !== ADMIN_ID) return res.status(403).send("Forbidden");
+
+  data.lagQueue[targetId] = !!lag; // true = start lag, false = stop lag
+  save();
+  res.sendStatus(200);
+});
+
+// ❓ CLIENT: CHECK IF I SHOULD LAG
+app.get("/check-lag/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const lagState = data.lagQueue[id] || false;
+  res.json({ lag: !!lagState });
 });
 
 const PORT = process.env.PORT || 8080;
